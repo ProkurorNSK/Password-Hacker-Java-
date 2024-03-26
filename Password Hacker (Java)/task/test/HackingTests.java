@@ -3,14 +3,41 @@ import org.hyperskill.hstest.testcase.CheckResult;
 import org.hyperskill.hstest.testcase.TestCase;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
+
+class PasswordGenerator implements Iterator<String> {
+  private final String abc = "abcdefghijklmnopqrstuvwxyz1234567890";
+  private int index = 1;
+  private Iterator<String> currentIterator;
+
+  @Override
+  public boolean hasNext() {
+    if (currentIterator == null || !currentIterator.hasNext()) {
+      Stream<String> stream = Stream.of("");
+      for (int i = 0; i < index; i++) {
+        stream = stream.flatMap(s -> abc.chars().mapToObj(c -> s + (char) c));
+      }
+      currentIterator = stream.iterator();
+      index++;
+    }
+    return true;
+  }
+
+  @Override
+  public String next() {
+    return currentIterator.next();
+  }
+}
 
 public class HackingTests extends StageTest {
 
   boolean ready = false;
   ServerHack serverHack = null;
   Thread serverThread = null;
+  String password = null;
 
   String randomPassword() {
     String abc = "abcdefghijklmnopqrstuvwxyz1234567890";
@@ -47,10 +74,11 @@ public class HackingTests extends StageTest {
       startServer();
     } catch (IOException ignored) {
     }
-    String testWord = randomPassword();
+    password = randomPassword();
     return List.of(new TestCase<String>()
-            .addArguments("localhost", "9090", testWord)
-            .setAttach(testWord)
+            .addArguments("localhost", "9090")
+            .setAttach(password)
+            .setTimeLimit(25000)
     );
   }
 
@@ -65,15 +93,31 @@ public class HackingTests extends StageTest {
     if (serverHack.message.size() == 0) {
       return CheckResult.wrong("You sent nothing to the server");
     }
-    if (reply.length() == 0) {
+    if (reply.length() == 0 || reply.split("\n").length == 0) {
       return CheckResult.wrong("You did not print anything");
     }
-    if (!reply.split("\n")[0].equals("Wrong password!")) {
-      return CheckResult.wrong("The line you printed is not the one sent by server");
+    String realPassword = attach.toString();
+    if (!reply.split("\n")[0].equals(realPassword)) {
+      return CheckResult.wrong("The password you printed is not correct. The password is \"" + realPassword + "\"");
     }
-    if (!serverHack.message.get(0).equals(attach.toString())) {
-      return CheckResult.wrong("You sent the wrong information to the server");
+
+    boolean success = true;
+    PasswordGenerator generator = new PasswordGenerator();
+    String pass = "";
+    while (generator.hasNext()) {
+      pass = generator.next();
+      if (pass.length() == realPassword.length()) {
+        break;
+      }
+      if (!serverHack.message.remove(pass)) {
+        success = false;
+        break;
+      }
     }
-    return CheckResult.correct();
+
+    if (success) {
+      return CheckResult.correct();
+    }
+    return CheckResult.wrong("Your generator algorithm does not include all the variants: " + pass);
   }
 }

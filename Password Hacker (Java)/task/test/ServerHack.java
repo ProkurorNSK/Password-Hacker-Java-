@@ -33,7 +33,6 @@ public class ServerHack implements Runnable {
     } catch (IOException ignored) {
     }
     hacking.ready = true;
-
     try {
       socket = server.accept();
       connected = true;
@@ -44,7 +43,15 @@ public class ServerHack implements Runnable {
       while (stopThread) {
         String msg = inputStream.readUTF();
         message.add(msg);
-        outputStream.writeUTF("Wrong password!");
+        if(message.size()>1_000_000){
+          outputStream.writeUTF("Too many attempts");
+          break;
+        }
+        if(msg.equals(hacking.password)){
+          outputStream.writeUTF("Connection success!");
+        }else{
+          outputStream.writeUTF("Wrong password!");
+        }
       }
       disconnect();
     } catch (IOException ignored) {
@@ -55,10 +62,8 @@ public class ServerHack implements Runnable {
     stopThread = false;
     try {
       inputStream.close();
-    } catch (IOException ignored) {
-    }
-    try {
       socket.close();
+      server.close();
     } catch (IOException ignored) {
     }
   }
