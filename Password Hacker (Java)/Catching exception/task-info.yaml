@@ -277,13 +277,8 @@ files:
       }
     learner_created: false
 feedback_link: https://hyperskill.org/learn/step/26982#comment
-status: Failed
+status: Solved
 feedback:
-  message: |-
-    Wrong answer in test #1
-
-    You did not print anything
-
-    Arguments: localhost 9090
-  time: "Sun, 31 Mar 2024 11:46:47 UTC"
+  message: Congratulations!
+  time: "Sat, 06 Apr 2024 21:21:17 UTC"
 record: 5

